@@ -1,6 +1,13 @@
+window.d$3 = {};
+
 $(document).ready(function() {
 
-  window.initialize = function(width, height) {
+  var initialized = false;
+
+  d$3.initialize = function(width, height) {
+      if(initialized) return;
+      else initialized = true;
+
       window.svgWidth = width;
       window.svgHeight = height;
 
@@ -151,6 +158,11 @@ $(document).ready(function() {
             if(mousedown_link === selected_link) selected_link = null;
             else selected_link = mousedown_link;
             selected_node = null;
+
+            // Call User-defined click event if exists
+            if(typeof(d$3.OnLinkSelect) != "undefined" && selected_link != null) d$3.OnLinkSelect(selected_link);
+            if(typeof(d$3.OnLinkUnselect) != "undefined" && selected_link == null) d$3.OnLinkUnselect(mousedown_link);
+
             restart();
           });
 
@@ -195,6 +207,11 @@ $(document).ready(function() {
             else selected_node = mousedown_node;
             selected_link = null;
 
+            // Call User-defined click function, if exists
+            // Call User-defined click event if exists
+            if(typeof(d$3.OnNodeSelect) != "undefined" && selected_node != null) d$3.OnNodeSelect(selected_node);
+            if(typeof(d$3.OnNodeUnselect) != "undefined" && selected_node == null) d$3.OnNodeUnselect(mousedown_node);
+
             /*
             // reposition drag line
             drag_line
@@ -221,6 +238,11 @@ $(document).ready(function() {
           force.start();
           for(var i=0; i<100; i++) force.tick();
           force.stop();
+          doTick = false;
+        } else {
+          force.start();
+          force.tick();
+          force.stop();
         }
       }
 
@@ -238,10 +260,7 @@ $(document).ready(function() {
 
         // update drag line
       //    drag_line.attr('d', 'M' + mousedown_node.x + ',' + mousedown_node.y + 'L' + d3.mouse(this)[0] + ',' + d3.mouse(this)[1]);
-
-        doTick = false;
         restart();
-        doTick = true;
       }
 
       function mouseup() {
@@ -377,16 +396,47 @@ $(document).ready(function() {
       $('svg').svgPan('viewport');
 
       /////////////// BASIC API STARTS HERE! //////////////////
-  window.AddNode = function() {
-    // insert new node at point
-    var point = [Math.random() * svgWidth, Math.random() * svgHeight];
-    var node = {id: ++lastNodeId, reflexive: false};
-    node.x = point[0];
-    node.y = point[1];
-    //node.fixed = true;
-    nodes.push(node);
+      
+      d$3.AddNode = function(nodeID, isFixed) {
+        // insert new node at point
+        var point = [Math.random() * svgWidth, Math.random() * svgHeight];
 
-    restart();
-  }
+        var currentNode = $.grep(nodes, function(e){ return e.id == nodeID; });
+
+        if(currentNode.length == 0) {
+
+          var node = {id: ++lastNodeId, reflexive: false};
+          node.x = point[0];
+          node.y = point[1];
+          node.fixed = isFixed;
+          nodes.push(node);
+
+          doTick = true;
+
+          restart();
+          return true;
+        } else return false;
+      }
+
+      d$3.AddLink = function(sourceID, targetID) {
+
+        // Insert new link between two existing nodes
+
+        var nodeStart = $.grep(nodes, function(e){ return e.id == sourceID; });
+        var nodeEnd = $.grep(nodes, function(e){ return e.id == targetID; });
+        var currentLink = $.grep(links, function(e) {
+          return e.source.id == sourceID && e.target.id == targetID;
+        });
+        if(nodeStart.length > 0 && nodeEnd.length > 0 && currentLink.length == 0) {
+          links.push({source: nodeStart[0], target: nodeEnd[0], left: false, right: true });
+          restart();
+          return true;
+        } else return false;
+      }
+
+      d$3.Reorganize = function() {
+        doTick = true;
+        restart();
+      }
   }
 });

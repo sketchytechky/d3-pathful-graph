@@ -4,12 +4,8 @@
     <meta charset="utf-8">
     <title>Directed Graph Editor</title>
     <link rel="stylesheet" href="app.css">
-  </head>
-  
-  <body>
-  </body>
 
-  <!-- jQuery -->
+    <!-- jQuery -->
     <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
 
     <!-- d3 -->
@@ -17,8 +13,39 @@
 
     <script type="text/javascript" src="http://blog.accursedware.com/jquery-svgpan/jquery-svgpan.js"></script>
 
-  	<script type="text/javascript" src="graph.js"></script>
+    <script type="text/javascript" src="pathful_graph.js"></script>
 
-  	<input type="button" value="Add Node!" onclick="AddNode()" />
-  	<input type="button" value="Start!" onclick="initialize(960, 500)" />
+    <script type="text/javascript">
+
+    // Called whenever a node is selected
+    d$3.OnNodeSelect = function(node) {
+      document.getElementById("header").innerHTML = "You Selected Node " + node.id + "!";
+    }
+    // Called whenever a node is unselected
+    d$3.OnNodeUnselect = function(node) {
+      document.getElementById("header").innerHTML = "Node Unselected...";
+    }
+
+    // Called whenever a link is selected
+    d$3.OnLinkSelect = function(link) {
+      document.getElementById("header").innerHTML = "Link Connecting " + link.source.id + " and " + link.target.id + "!";
+    }
+    // Called whenever a link is unselected
+    d$3.OnLinkUnselect = function(link) {
+      document.getElementById("header").innerHTML = "Link Unselected...";
+    }
+
+
+    </script>
+
+  </head>
+  
+  <body>
+  </body>
+
+    <input type="button" value="Start!" onclick="d$3.initialize(960, 500)" />
+  	<input type="button" value="Add Node!" onclick="d$3.AddNode()" />
+    <input type="button" value="Add Link!" onclick="d$3.AddLink(1, 3)" />
+    <input type="button" value="Auto-Place Nodes" onclick="d$3.Reorganize()" />
+    <h1 id="header">Initialize the Graph!</h1>
 </html>
