@@ -437,6 +437,52 @@ $(document).ready(function() {
       d$3.Reorganize = function() {
         doTick = true;
         restart();
+        return true;
+      }
+
+      d$3.SelectLink = function(sourceID, targetID) {
+        var selectLink = $.grep(links, function(e) {
+          return e.source.id == sourceID && e.target.id == targetID;
+        });
+
+        if(selectLink.length > 0) {
+          d = selectLink[0];
+          // select link
+          mousedown_link = d;
+          if(mousedown_link === selected_link) selected_link = null;
+          else selected_link = mousedown_link;
+          selected_node = null;
+           // Call User-defined click event if exists
+          if(typeof(d$3.OnLinkSelect) != "undefined" && selected_link != null) d$3.OnLinkSelect(selected_link);
+          if(typeof(d$3.OnLinkUnselect) != "undefined" && selected_link == null) d$3.OnLinkUnselect(mousedown_link);
+          restart();
+          return true;
+        } else return false;
+      }
+
+      d$3.SelectNode = function(nodeID) {
+        var selectNode = $.grep(nodes, function(e){ return e.id == nodeID; });
+        if(selectNode.length > 0) {
+          d = selectNode[0];
+          // select node
+          mousedown_node = d;
+          if(mousedown_node === selected_node) selected_node = null;
+          else selected_node = mousedown_node;
+          selected_link = null;
+
+          // Call User-defined click event if exists
+          if(typeof(d$3.OnNodeSelect) != "undefined" && selected_node != null) d$3.OnNodeSelect(selected_node);
+          if(typeof(d$3.OnNodeUnselect) != "undefined" && selected_node == null) d$3.OnNodeUnselect(mousedown_node);
+
+          restart();
+          return true;
+        } else return false;
+      }
+
+      d$3.GetSelectedObject = function() {
+        if(selected_link != null) return selected_link;
+        else if(selected_node != null) return selected_node;
+        else return null;
       }
   }
 });
