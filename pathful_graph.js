@@ -231,9 +231,7 @@ $(document).ready(function() {
           force.stop();
           doTick = false;
         } else {
-          force.start();
           force.tick();
-          force.stop();
         }
       }
 
@@ -400,6 +398,7 @@ $(document).ready(function() {
             default:
               return false;
           }
+          doTick = true;
           restart();
           return true;
         } else return false;
