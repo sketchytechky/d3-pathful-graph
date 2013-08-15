@@ -314,44 +314,19 @@ $(document).ready(function() {
         switch(d3.event.keyCode) {
           case 8: // backspace
           case 46: // delete
-            if(selected_node) {
-              if(!selected_node.fixed) {
-                nodes.splice(nodes.indexOf(selected_node), 1);
-                spliceLinksForNode(selected_node);
+            if(manualSelect) {
+              if(selected_node) {
+                if(!selected_node.fixed) {
+                  nodes.splice(nodes.indexOf(selected_node), 1);
+                  spliceLinksForNode(selected_node);
+                }
+              } else if(selected_link) {
+                links.splice(links.indexOf(selected_link), 1);
               }
-            } else if(selected_link) {
-              links.splice(links.indexOf(selected_link), 1);
+              selected_link = null;
+              selected_node = null;
+              restart();
             }
-            selected_link = null;
-            selected_node = null;
-            restart();
-            break;
-          case 66: // B
-            if(selected_link) {
-              // set link direction to both left and right
-              selected_link.left = true;
-              selected_link.right = true;
-            }
-            restart();
-            break;
-          case 76: // L
-            if(selected_link) {
-              // set link direction to left only
-              selected_link.left = true;
-              selected_link.right = false;
-            }
-            restart();
-            break;
-          case 82: // R
-            if(selected_node) {
-              // toggle node reflexivity
-              selected_node.reflexive = !selected_node.reflexive;
-            } else if(selected_link) {
-              // set link direction to right only
-              selected_link.left = false;
-              selected_link.right = true;
-            }
-            restart();
             break;
         }
       }
@@ -401,7 +376,7 @@ $(document).ready(function() {
         } else return false;
       }
 
-      d$3.AddLink = function(sourceID, targetID) {
+      d$3.AddLink = function(sourceID, targetID, direction) {
 
         // Insert new link between two existing nodes
 
@@ -411,7 +386,46 @@ $(document).ready(function() {
           return e.source.id == sourceID && e.target.id == targetID;
         });
         if(nodeStart.length > 0 && nodeEnd.length > 0 && currentLink.length == 0) {
-          links.push({source: nodeStart[0], target: nodeEnd[0], left: false, right: true });
+          var left, right;
+          switch(direction) {
+            case d$3.direction.left:
+              links.push({source: nodeStart[0], target: nodeEnd[0], left: true, right: false });
+              break;
+            case d$3.direction.right:
+              links.push({source: nodeStart[0], target: nodeEnd[0], left: false, right: true });
+              break;
+            case d$3.direction.both:
+              links.push({source: nodeStart[0], target: nodeEnd[0], left: true, right: true });
+              break;
+            default:
+              return false;
+          }
+          restart();
+          return true;
+        } else return false;
+      }
+
+      d$3.SetLinkDireciton = function(sourceID, targetID, direction) {
+        var currentLink = $.grep(links, function(e) {
+          return e.source.id == sourceID && e.target.id == targetID;
+        });
+        if(currentLink.length > 0) {
+          switch(direction) {
+            case d$3.direction.left:
+              currentLink[0].left = true;
+              currentLink[0].right = false;
+              break;
+            case d$3.direction.right:
+              currentLink[0].left = false;
+              currentLink[0].right = true;
+              break;
+            case d$3.direction.both:
+              currentLink[0].left = true;
+              currentLink[0].right = true;
+              break;
+            default:
+              return false;
+          }
           restart();
           return true;
         } else return false;
@@ -472,5 +486,8 @@ $(document).ready(function() {
         manualSelect = isEnabled;
         return manualSelect;
       }
+
+      ///////////////// Variables //////////////////
+      d$3.direction = {left: 0, right: 1, both: 2};
   }
 });
