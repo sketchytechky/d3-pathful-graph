@@ -3,6 +3,7 @@ window.d$3 = {};
 $(document).ready(function() {
 
   var initialized = false;
+  var manualSelect = true;
 
   d$3.initialize = function(width, height) {
       if(initialized) return;
@@ -151,7 +152,7 @@ $(document).ready(function() {
           .style('marker-start', function(d) { return d.left ? 'url(#start-arrow)' : ''; })
           .style('marker-end', function(d) { return d.right ? 'url(#end-arrow)' : ''; })
           .on('mousedown', function(d) {
-            if(d3.event.altKey) return;
+            if(d3.event.altKey || !manualSelect) return;
 
             // select link
             mousedown_link = d;
@@ -188,18 +189,8 @@ $(document).ready(function() {
           .style('fill', function(d) { return (d === selected_node) ? d3.rgb(colors(d.id)).brighter().toString() : colors(d.id); })
           .style('stroke', function(d) { return d3.rgb(colors(d.id)).darker().toString(); })
           .classed('reflexive', function(d) { return d.reflexive; })
-          .on('mouseover', function(d) {
-            if(!mousedown_node || d === mousedown_node) return;
-            // enlarge target node
-            d3.select(this).attr('transform', 'scale(1.1)');
-          })
-          .on('mouseout', function(d) {
-            if(!mousedown_node || d === mousedown_node) return;
-            // unenlarge target node
-            d3.select(this).attr('transform', '');
-          })
           .on('mousedown', function(d) {
-            if(d3.event.altKey) return;
+            if(d3.event.altKey || !manualSelect) return;
 
             // select node
             mousedown_node = d;
@@ -255,13 +246,6 @@ $(document).ready(function() {
       
       }
 
-      function mousemove() {
-        if(!mousedown_node) return;
-
-        // update drag line
-      //    drag_line.attr('d', 'M' + mousedown_node.x + ',' + mousedown_node.y + 'L' + d3.mouse(this)[0] + ',' + d3.mouse(this)[1]);
-        restart();
-      }
 
       function mouseup() {
         /*
@@ -387,7 +371,6 @@ $(document).ready(function() {
       // app starts here
 
       svg.on('mousedown', mousedown)
-        .on('mousemove', mousemove)
         .on('mouseup', mouseup);
       d3.select(window)
         .on('keydown', keydown)
@@ -483,6 +466,11 @@ $(document).ready(function() {
         if(selected_link != null) return selected_link;
         else if(selected_node != null) return selected_node;
         else return null;
+      }
+
+      d$3.ToggleManualSelect = function(isEnabled) {
+        manualSelect = isEnabled;
+        return manualSelect;
       }
   }
 });
