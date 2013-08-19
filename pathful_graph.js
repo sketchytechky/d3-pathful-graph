@@ -1,6 +1,14 @@
+window.d$3 = {};
+
 $(document).ready(function() {
 
-  window.initialize = function(width, height) {
+  var initialized = false;
+  var manualSelect = true;
+
+  d$3.initialize = function(width, height) {
+      if(initialized) return;
+      else initialized = true;
+
       window.svgWidth = width;
       window.svgHeight = height;
 
@@ -144,13 +152,18 @@ $(document).ready(function() {
           .style('marker-start', function(d) { return d.left ? 'url(#start-arrow)' : ''; })
           .style('marker-end', function(d) { return d.right ? 'url(#end-arrow)' : ''; })
           .on('mousedown', function(d) {
-            if(d3.event.altKey) return;
+            if(d3.event.altKey || !manualSelect) return;
 
             // select link
             mousedown_link = d;
             if(mousedown_link === selected_link) selected_link = null;
             else selected_link = mousedown_link;
             selected_node = null;
+
+            // Call User-defined click event if exists
+            if(typeof(d$3.OnLinkSelect) != "undefined" && selected_link != null) d$3.OnLinkSelect(selected_link);
+            if(typeof(d$3.OnLinkUnselect) != "undefined" && selected_link == null) d$3.OnLinkUnselect(mousedown_link);
+
             restart();
           });
 
@@ -176,24 +189,19 @@ $(document).ready(function() {
           .style('fill', function(d) { return (d === selected_node) ? d3.rgb(colors(d.id)).brighter().toString() : colors(d.id); })
           .style('stroke', function(d) { return d3.rgb(colors(d.id)).darker().toString(); })
           .classed('reflexive', function(d) { return d.reflexive; })
-          .on('mouseover', function(d) {
-            if(!mousedown_node || d === mousedown_node) return;
-            // enlarge target node
-            d3.select(this).attr('transform', 'scale(1.1)');
-          })
-          .on('mouseout', function(d) {
-            if(!mousedown_node || d === mousedown_node) return;
-            // unenlarge target node
-            d3.select(this).attr('transform', '');
-          })
           .on('mousedown', function(d) {
-            if(d3.event.altKey) return;
+            if(d3.event.altKey || !manualSelect) return;
 
             // select node
             mousedown_node = d;
             if(mousedown_node === selected_node) selected_node = null;
             else selected_node = mousedown_node;
             selected_link = null;
+
+            // Call User-defined click function, if exists
+            // Call User-defined click event if exists
+            if(typeof(d$3.OnNodeSelect) != "undefined" && selected_node != null) d$3.OnNodeSelect(selected_node);
+            if(typeof(d$3.OnNodeUnselect) != "undefined" && selected_node == null) d$3.OnNodeUnselect(mousedown_node);
 
             /*
             // reposition drag line
@@ -221,6 +229,9 @@ $(document).ready(function() {
           force.start();
           for(var i=0; i<100; i++) force.tick();
           force.stop();
+          doTick = false;
+        } else {
+          force.tick();
         }
       }
 
@@ -233,16 +244,6 @@ $(document).ready(function() {
       
       }
 
-      function mousemove() {
-        if(!mousedown_node) return;
-
-        // update drag line
-      //    drag_line.attr('d', 'M' + mousedown_node.x + ',' + mousedown_node.y + 'L' + d3.mouse(this)[0] + ',' + d3.mouse(this)[1]);
-
-        doTick = false;
-        restart();
-        doTick = true;
-      }
 
       function mouseup() {
         /*
@@ -311,44 +312,19 @@ $(document).ready(function() {
         switch(d3.event.keyCode) {
           case 8: // backspace
           case 46: // delete
-            if(selected_node) {
-              if(!selected_node.fixed) {
-                nodes.splice(nodes.indexOf(selected_node), 1);
-                spliceLinksForNode(selected_node);
+            if(manualSelect) {
+              if(selected_node) {
+                if(!selected_node.fixed) {
+                  nodes.splice(nodes.indexOf(selected_node), 1);
+                  spliceLinksForNode(selected_node);
+                }
+              } else if(selected_link) {
+                links.splice(links.indexOf(selected_link), 1);
               }
-            } else if(selected_link) {
-              links.splice(links.indexOf(selected_link), 1);
+              selected_link = null;
+              selected_node = null;
+              restart();
             }
-            selected_link = null;
-            selected_node = null;
-            restart();
-            break;
-          case 66: // B
-            if(selected_link) {
-              // set link direction to both left and right
-              selected_link.left = true;
-              selected_link.right = true;
-            }
-            restart();
-            break;
-          case 76: // L
-            if(selected_link) {
-              // set link direction to left only
-              selected_link.left = true;
-              selected_link.right = false;
-            }
-            restart();
-            break;
-          case 82: // R
-            if(selected_node) {
-              // toggle node reflexivity
-              selected_node.reflexive = !selected_node.reflexive;
-            } else if(selected_link) {
-              // set link direction to right only
-              selected_link.left = false;
-              selected_link.right = true;
-            }
-            restart();
             break;
         }
       }
@@ -368,7 +344,6 @@ $(document).ready(function() {
       // app starts here
 
       svg.on('mousedown', mousedown)
-        .on('mousemove', mousemove)
         .on('mouseup', mouseup);
       d3.select(window)
         .on('keydown', keydown)
@@ -377,16 +352,141 @@ $(document).ready(function() {
       $('svg').svgPan('viewport');
 
       /////////////// BASIC API STARTS HERE! //////////////////
-  window.AddNode = function() {
-    // insert new node at point
-    var point = [Math.random() * svgWidth, Math.random() * svgHeight];
-    var node = {id: ++lastNodeId, reflexive: false};
-    node.x = point[0];
-    node.y = point[1];
-    //node.fixed = true;
-    nodes.push(node);
+      
+      d$3.AddNode = function(nodeID, isFixed) {
+        // insert new node at point
+        var point = [Math.random() * svgWidth, Math.random() * svgHeight];
 
-    restart();
-  }
+        var currentNode = $.grep(nodes, function(e){ return e.id == nodeID; });
+
+        if(currentNode.length == 0) {
+
+          var node = {id: ++lastNodeId, reflexive: false};
+          node.x = point[0];
+          node.y = point[1];
+          node.fixed = isFixed;
+          nodes.push(node);
+
+          doTick = true;
+
+          restart();
+          return true;
+        } else return false;
+      }
+
+      d$3.AddLink = function(sourceID, targetID, direction) {
+
+        // Insert new link between two existing nodes
+
+        var nodeStart = $.grep(nodes, function(e){ return e.id == sourceID; });
+        var nodeEnd = $.grep(nodes, function(e){ return e.id == targetID; });
+        var currentLink = $.grep(links, function(e) {
+          return e.source.id == sourceID && e.target.id == targetID;
+        });
+        if(nodeStart.length > 0 && nodeEnd.length > 0 && currentLink.length == 0) {
+          var left, right;
+          switch(direction) {
+            case d$3.direction.left:
+              links.push({source: nodeStart[0], target: nodeEnd[0], left: true, right: false });
+              break;
+            case d$3.direction.right:
+              links.push({source: nodeStart[0], target: nodeEnd[0], left: false, right: true });
+              break;
+            case d$3.direction.both:
+              links.push({source: nodeStart[0], target: nodeEnd[0], left: true, right: true });
+              break;
+            default:
+              return false;
+          }
+          doTick = true;
+          restart();
+          return true;
+        } else return false;
+      }
+
+      d$3.SetLinkDireciton = function(sourceID, targetID, direction) {
+        var currentLink = $.grep(links, function(e) {
+          return e.source.id == sourceID && e.target.id == targetID;
+        });
+        if(currentLink.length > 0) {
+          switch(direction) {
+            case d$3.direction.left:
+              currentLink[0].left = true;
+              currentLink[0].right = false;
+              break;
+            case d$3.direction.right:
+              currentLink[0].left = false;
+              currentLink[0].right = true;
+              break;
+            case d$3.direction.both:
+              currentLink[0].left = true;
+              currentLink[0].right = true;
+              break;
+            default:
+              return false;
+          }
+          restart();
+          return true;
+        } else return false;
+      }
+
+      d$3.Reorganize = function() {
+        doTick = true;
+        restart();
+        return true;
+      }
+
+      d$3.SelectLink = function(sourceID, targetID) {
+        var selectLink = $.grep(links, function(e) {
+          return e.source.id == sourceID && e.target.id == targetID;
+        });
+
+        if(selectLink.length > 0) {
+          d = selectLink[0];
+          // select link
+          mousedown_link = d;
+          if(mousedown_link === selected_link) selected_link = null;
+          else selected_link = mousedown_link;
+          selected_node = null;
+           // Call User-defined click event if exists
+          if(typeof(d$3.OnLinkSelect) != "undefined" && selected_link != null) d$3.OnLinkSelect(selected_link);
+          if(typeof(d$3.OnLinkUnselect) != "undefined" && selected_link == null) d$3.OnLinkUnselect(mousedown_link);
+          restart();
+          return true;
+        } else return false;
+      }
+
+      d$3.SelectNode = function(nodeID) {
+        var selectNode = $.grep(nodes, function(e){ return e.id == nodeID; });
+        if(selectNode.length > 0) {
+          d = selectNode[0];
+          // select node
+          mousedown_node = d;
+          if(mousedown_node === selected_node) selected_node = null;
+          else selected_node = mousedown_node;
+          selected_link = null;
+
+          // Call User-defined click event if exists
+          if(typeof(d$3.OnNodeSelect) != "undefined" && selected_node != null) d$3.OnNodeSelect(selected_node);
+          if(typeof(d$3.OnNodeUnselect) != "undefined" && selected_node == null) d$3.OnNodeUnselect(mousedown_node);
+
+          restart();
+          return true;
+        } else return false;
+      }
+
+      d$3.GetSelectedObject = function() {
+        if(selected_link != null) return selected_link;
+        else if(selected_node != null) return selected_node;
+        else return null;
+      }
+
+      d$3.ToggleManualSelect = function(isEnabled) {
+        manualSelect = isEnabled;
+        return manualSelect;
+      }
+
+      ///////////////// Variables //////////////////
+      d$3.direction = {left: 0, right: 1, both: 2};
   }
 });
